@@ -25,7 +25,6 @@ markdown
 
 ### Установка и запуск
 
-```bash
 # Клонирование репозитория
 git clone <your-repo-url>
 cd klin
