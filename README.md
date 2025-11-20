@@ -62,6 +62,7 @@ python remote/test_t.py
 
 ```bash
 class VideoClassifier:
+
     def __init__(self, model_name="MCG-NJU/videomae-base-finetuned-kinetics"):
         self.model = VideoMAEForVideoClassification.from_pretrained(model_name)
         self.processor = VideoMAEImageProcessor.from_pretrained(model_name)
@@ -128,8 +129,7 @@ class FightDetectionModel:
 | Успешно обработано    | 472 (99.4%)         |
 | Ошибок                | 3                   |
 | Средняя уверенность   | 0.9607              |
-
-**Распределение классов**
+| Распределение классов                       |
 | violent               | 351 видео (74.4%)   |
 | nonviolent            | 121 видео (25.6%)   |
 
@@ -141,8 +141,7 @@ class FightDetectionModel:
 | Успешно обработано    | 687 (98.9%)         |
 | Ошибок                | 8                   |
 | Средняя уверенность   | 0.9945              |
-
-**Распределение классов**
+| Распределение классов                       |
 | violent               | 667 видео (97.1%)   |
 | nonviolent            | 20 видео (2.9%)     |
 
