@@ -56,36 +56,6 @@ python remote/test_t.py
 - Обработка видео: OpenCV
 - Датасеты: RWF-2000 + Violence Detection + Anomaly
 
-### Ключевые компоненты
-
-1. VideoMAE классификатор (remote/test_t.py)
-
-```bash
-class VideoClassifier:
-
-    def __init__(self, model_name="MCG-NJU/videomae-base-finetuned-kinetics"):
-        self.model = VideoMAEForVideoClassification.from_pretrained(model_name)
-        self.processor = VideoMAEImageProcessor.from_pretrained(model_name)
-    
-    def predict(self, video_path) -> str:
-        # Классификация: violent / nonviolent
-```
-2. Мульти-датасетный загрузчик (test/data_loader.py)
-
-```bash
-class FightDetectionDataset:
-    # Поддержка RWF-2000, Violence Detection, Anomaly datasets
-    # Автоматическая аугментация и препроцессинг
-```
-
-3. Гибридная модель (в разработке) (test/model.py)
-
-```bash
-class FightDetectionModel:
-    # EfficientNet-B0 + Transformer Encoder
-    # Для временного анализа последовательностей
-```
-
 ## Датасеты
 
 ### Структура и состав
@@ -117,11 +87,10 @@ class FightDetectionModel:
 
 1. Запросите ссылку у команды
 2. Используйте dataset_info.json для метаданных
-3. Воспользуйтесь скриптами в test/data_loader.py
 
 ## Результаты и метрики
 
-### Тестирование на validation set
+### Тестирование на test set (violent)
 
 | Метрика               |	Значение          |
 | --------------------- | ------------------- |
@@ -133,7 +102,7 @@ class FightDetectionModel:
 | violent               | 351 видео (74.4%)   |
 | nonviolent            | 121 видео (25.6%)   |
 
-### Тестирование на test set
+### Тестирование на test set (nonviolent)
 
 | Метрика               |	Значение          |
 | --------------------- | ------------------- |
@@ -167,21 +136,6 @@ result = classifier.predict('path/to/video.avi')
 print(f"Результат: {result}")
 ```
 
-### Обучение модели
-
-```bash
-from test.data_loader import DataLoaderFactory
-from test.model import ModelManager
-
-# Загрузка данных
-train_loader, val_loader = DataLoaderFactory.create_loaders(dataset_paths)
-
-# Обучение
-manager = ModelManager()
-manager.setup_model()
-manager.train_epoch(train_loader, criterion)
-```
-
 ### Тестирование
 
 ```bash
@@ -206,9 +160,7 @@ klin/
 │   ├── test_t.py             # VideoMAE классификатор
 │   └── MCG-NJU/              # Локальная копия модели (гит-игнор)
 ├── 📂 test/                  # Основная разработка
-│   ├── data_loader.py        # Универсальный загрузчик данных
 │   ├── model.py              # Гибридная модель (EfficientNet + Transformer)
-│   ├── test_data_loader.py   # Тесты загрузчика
 │   ├── test_model.py         # Тесты модели
 │   ├── test_stuff.py         # Эксперименты с YOLO
 │   ├── Plan.md               # План разработки
