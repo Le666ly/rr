@@ -185,6 +185,9 @@ manager.train_epoch(train_loader, criterion)
 ### Тестирование
 
 ```bash
+# Запуск основной точки входа (тестовая версия)
+python main.py
+
 # Тест загрузчика данных
 python test/test_data_loader.py
 
@@ -199,7 +202,7 @@ python test/test_stuff.py
 
 ```bash
 klin/
-├── 📂 remote/                 # Эксперименты с готовыми моделями
+├── 📂 remote/                # Эксперименты с готовыми моделями
 │   ├── test_t.py             # VideoMAE классификатор
 │   └── MCG-NJU/              # Локальная копия модели (гит-игнор)
 ├── 📂 test/                  # Основная разработка
@@ -210,10 +213,11 @@ klin/
 │   ├── test_stuff.py         # Эксперименты с YOLO
 │   ├── Plan.md               # План разработки
 │   └── __pycache__/
+├── 📄 main.py                # Главная точка входа в приложение
 ├── 📄 requirements.txt       # Зависимости проекта
-├── 📄 pyproject.toml        # Конфигурация Python
-├── 📄 .python-version       # Версия Python (3.10)
-└── 📄 README.md             # Эта документация
+├── 📄 pyproject.toml         # Конфигурация Python
+├── 📄 .python-version        # Версия Python (3.10)
+└── 📄 README.md              # Эта документация
 ```
 
 ## Зависимости
