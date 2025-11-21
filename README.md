@@ -22,9 +22,8 @@
 ### Предварительные требования
 
 - Python 3.10+
-- PostgreSQL (14+) + RabbitMQ (3.8+)
 - CUDA-capable GPU (рекомендуется)
-- 8GB+ RAM
+- Docker / Docker Desktop
 
 ### Установка и запуск
 
@@ -40,7 +39,7 @@ cd klin
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
+source .venv/bin/activate      # Linux/Mac
        .venv\Scripts\activate  # Windows
 ```
 
@@ -54,7 +53,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Отредактируйте .env файл с вашими настройками БД и RabbitMQ
+# Файл .env будет автоматически настроен при запуске Docker
 ```
 
 ## Архитектура системы
@@ -151,7 +150,7 @@ python remote/result_check.py
 python remote/tteesstttt.py
 ```
 
-### ML компоненты (готовы)
+### Веб-приложение (в разработке)
 
 ```bash
 # После реализации будет доступно:
