@@ -142,9 +142,6 @@ print(f"Результат: {result}")
 # Запуск основной точки входа (тестовая версия)
 python main.py
 
-# Тест загрузчика данных
-python test/test_data_loader.py
-
 # Тест архитектуры модели  
 python test/test_model.py
 
