@@ -8,16 +8,30 @@ export class ApiVideoRepository {
         const formData = new FormData();
         formData.append('data', file);
         if (responseUrl) formData.append('response_url', responseUrl);
-        return this.http.postForm<Analysis>('/Klin/upload', formData);
+        const raw = await this.http.postForm<any>('/Klin/upload', formData);
+        return this.parseAnalysis(raw);
     }
 
     async getStatus(id: string): Promise<Analysis> {
-        return this.http.get<Analysis>(`/Klin/${id}`);
+        const raw = await this.http.get<any>(`/Klin/${id}`);
+        return this.parseAnalysis(raw);
     }
 
-    // Заглушка для получения истории (бэкенд не поддерживает)
-    async getHistory(): Promise<Analysis[]> {
-        // В реальном проекте был бы GET /Klin/history
-        return [];
+    async getHistory(limit: number = 20): Promise<Analysis[]> {
+        // Бэкенд возвращает список последних задач (по умолчанию 100)
+        const rawList = await this.http.get<any[]>('/Klin/');
+        return rawList.slice(0, limit).map(item => this.parseAnalysis(item));
+    }
+
+    private parseAnalysis(raw: any): Analysis {
+        return {
+            id: raw.id,
+            state: raw.state,
+            x3d: raw.x3d ? JSON.parse(raw.x3d) : null,
+            mae: raw.mae ? JSON.parse(raw.mae) : null,
+            yolo: raw.yolo ? JSON.parse(raw.yolo) : null,
+            objects: raw.objects ?? null,
+            all_classes: raw.all_classes ?? null,
+        };
     }
 }

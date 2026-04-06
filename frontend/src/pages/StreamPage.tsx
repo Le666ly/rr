@@ -1,51 +1,57 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { useWebSocket } from '../hooks/useWebSocket';
+import React, { useState } from 'react';
+import { useStream } from '../hooks/useStream';
 import { BBoxCanvas } from '../components/BBoxCanvas/BBoxCanvas';
 
 export const StreamPage: React.FC = () => {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const { isConnected, lastEvent, send } = useWebSocket();
-    const [streamActive, setStreamActive] = useState(false);
+    const [cameraUrl, setCameraUrl] = useState('');
+    const [cameraId, setCameraId] = useState('');
+    const { streamState, isActive, error, start, stop } = useStream();
 
-    useEffect(() => {
-        if (streamActive) {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    if (videoRef.current) videoRef.current.srcObject = stream;
-                    // Запуск отправки кадров
-                    const interval = setInterval(() => {
-                        if (videoRef.current && isConnected) {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = videoRef.current.videoWidth;
-                            canvas.height = videoRef.current.videoHeight;
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) {
-                                ctx.drawImage(videoRef.current, 0, 0);
-                                const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-                                send(base64);
-                            }
-                        }
-                    }, 300);
-                    return () => clearInterval(interval);
-                })
-                .catch(err => console.error('Camera error', err));
-        }
-    }, [streamActive, isConnected, send]);
+    const handleStart = () => {
+        if (!cameraUrl.trim()) return;
+        const id = cameraId.trim() || `cam_${Date.now()}`;
+        start(cameraUrl, id);
+    };
 
-    const detections = lastEvent?.type === 'YOLO' ? lastEvent.payload.detections.map((d: any) => d.bbox) : null;
+    const handleStop = () => {
+        stop();
+    };
 
+    // Для отображения bbox у стрима нет видеоэлемента, так как видео воспроизводится на бэкенде.
+    // Можно показать последний обнаруженный класс и уверенность.
     return (
         <div className="stream-page">
-            <div className="stream-header">
-                <button onClick={() => setStreamActive(!streamActive)}>
-                    {streamActive ? 'Остановить' : 'Запустить камеру'}
-                </button>
-                <div className="ws-status">{isConnected ? 'WebSocket OK' : 'WebSocket OFF'}</div>
+            <div className="stream-controls">
+                <input
+                    type="text"
+                    placeholder="URL камеры (RTSP, HTTP, файл)"
+                    value={cameraUrl}
+                    onChange={e => setCameraUrl(e.target.value)}
+                    className="stream-url-input"
+                />
+                <input
+                    type="text"
+                    placeholder="ID камеры (опционально)"
+                    value={cameraId}
+                    onChange={e => setCameraId(e.target.value)}
+                    className="stream-id-input"
+                />
+                <button onClick={handleStart} disabled={isActive}>Запустить стрим</button>
+                <button onClick={handleStop} disabled={!isActive}>Остановить</button>
             </div>
-            <div className="stream-video-wrapper">
-                <video ref={videoRef} autoPlay playsInline muted className="stream-video" />
-                <BBoxCanvas videoElement={videoRef.current} detections={detections} />
-            </div>
+
+            {error && <div className="stream-error">Ошибка: {error}</div>}
+
+            {streamState && (
+                <div className="stream-info">
+                    <div>Статус: {streamState.state}</div>
+                    <div>Последнее X3D: {streamState.last_x3d_label} ({streamState.last_x3d_confidence?.toFixed(2)})</div>
+                    <div>Последнее MAE: {streamState.last_mae_label} ({streamState.last_mae_confidence?.toFixed(2)})</div>
+                    <div>Обнаруженные объекты: {streamState.objects?.join(', ') || '-'}</div>
+                </div>
+            )}
+
+            {/* Видеоплеер для стрима не нужен, так как бэкенд сам обрабатывает поток */}
         </div>
     );
 };

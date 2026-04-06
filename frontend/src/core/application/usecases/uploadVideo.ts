@@ -19,7 +19,7 @@ export async function uploadVideo(
     if (onStatusUpdate) onStatusUpdate(initial);
 
     // Периодический опрос статуса
-    const pollInterval = 2000;
+    const pollInterval = appConfig.pollIntervalMs;
     const maxAttempts = 60; // 2 минуты
     let attempts = 0;
 

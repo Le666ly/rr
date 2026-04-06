@@ -10,8 +10,12 @@ export const App: React.FC = () => {
             <header className="app-header">
                 <h1>KLIN</h1>
                 <div className="mode-switch">
-                    <button onClick={() => setMode('upload')} className={mode === 'upload' ? 'active' : ''}>Анализ видео</button>
-                    <button onClick={() => setMode('stream')} className={mode === 'stream' ? 'active' : ''}>Прямой эфир</button>
+                    <button onClick={() => setMode('upload')} className={mode === 'upload' ? 'active' : ''}>
+                        Анализ видео
+                    </button>
+                    <button onClick={() => setMode('stream')} className={mode === 'stream' ? 'active' : ''}>
+                        Прямой эфир
+                    </button>
                 </div>
             </header>
             {mode === 'upload' ? <UploadPage /> : <StreamPage />}

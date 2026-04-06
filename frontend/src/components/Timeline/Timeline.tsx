@@ -1,8 +1,13 @@
 import React from 'react';
 import './Timeline.css';
 
+interface TimelineEvent {
+    time: [number, number];
+    class: string;
+}
+
 interface TimelineProps {
-    events: Array<{ time: [number, number]; class: string }>;
+    events: TimelineEvent[];
     duration: number;
     currentTime: number;
     onSeek: (time: number) => void;
@@ -26,6 +31,7 @@ export const Timeline: React.FC<TimelineProps> = ({ events, duration, currentTim
                             left: `${(ev.time[0] / duration) * 100}%`,
                             width: `${((ev.time[1] - ev.time[0]) / duration) * 100}%`,
                         }}
+                        title={ev.class}
                     />
                 ))}
                 <div className="timeline-cursor" style={{ left: `${(currentTime / duration) * 100}%` }} />

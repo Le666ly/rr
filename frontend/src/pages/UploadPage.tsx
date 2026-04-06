@@ -4,15 +4,12 @@ import { BBoxCanvas } from '../components/BBoxCanvas/BBoxCanvas';
 import { Timeline } from '../components/Timeline/Timeline';
 import { LogPanel } from '../components/LogPanel/LogPanel';
 import { HistoryList } from '../components/HistoryList/HistoryList';
+import { HttpClient } from '../core/infrastructure/http/httpClient';
 import { ApiVideoRepository } from '../core/infrastructure/repositories/apiVideoRepository';
 import { ApiFeedbackRepository } from '../core/infrastructure/repositories/apiFeedbackRepository';
 import { LocalStorageHistoryRepository } from '../core/infrastructure/repositories/localStorageHistoryRepository';
-import { HttpClient } from '../core/infrastructure/http/httpClient';
-import { uploadVideo } from '../core/application/usecases/uploadVideo';
-import { getAnalysisStatus } from '../core/application/usecases/getAnalysisStatus';
-import { getHistory } from '../core/application/usecases/getHistory';
-import { sendFeedback } from '../core/application/usecases/sendFeedback';
-import { Analysis } from '../core/domain/entities/Analysis';
+import { uploadVideo, getHistory, sendFeedback, getAnalysisStatus } from '../core/application/usecases';
+import { Analysis, MaeEvent } from '../core/domain/entities/Analysis';
 import { HistoryItem } from '../core/domain/entities/HistoryItem';
 
 const http = new HttpClient();
@@ -38,8 +35,20 @@ export const UploadPage: React.FC = () => {
     };
 
     const loadHistory = async () => {
-        const items = await getHistory(historyRepo);
-        setHistory(items);
+        try {
+            const analyses = await getHistory(videoRepo, 20);
+            const items: HistoryItem[] = analyses.map(a => ({
+                id: a.id,
+                timestamp: new Date().toLocaleString(),
+                sourceName: a.id.slice(0, 8),
+                feedbackStatus: null,
+            }));
+            setHistory(items);
+            // также сохраняем в localStorage для согласованности
+            historyRepo.saveHistory(items);
+        } catch (err) {
+            console.error('Failed to load history', err);
+        }
     };
 
     const loadAnalysisById = async (id: string) => {
@@ -47,7 +56,9 @@ export const UploadPage: React.FC = () => {
             addLog(`Загрузка анализа ${id}...`);
             const analysis = await getAnalysisStatus(videoRepo, id);
             setResult(analysis);
-            if (analysis.video_url) setVideoUrl(analysis.video_url);
+            // В бэкенде нет video_url, но можно сгенерировать ссылку на оригинальное видео, если оно хранится в S3
+            // Пока оставим пустым, видео не будет проигрываться.
+            setVideoUrl(null);
             addLog('Данные восстановлены');
         } catch (err: any) {
             addLog(`Ошибка: ${err.message}`);
@@ -75,16 +86,7 @@ export const UploadPage: React.FC = () => {
                 if (status.state === 'ERROR') addLog('Ошибка обработки');
             });
 
-            const newHistoryItem: HistoryItem = {
-                id: analysis.id,
-                timestamp: new Date().toLocaleString(),
-                sourceName: file?.name || url,
-                feedbackStatus: null,
-            };
-            historyRepo.addItem(newHistoryItem);
-            await loadHistory();
-
-            if (analysis.video_url) setVideoUrl(analysis.video_url);
+            await loadHistory(); // обновим историю
             setResult(analysis);
             addLog('Анализ завершён');
         } catch (err: any) {
@@ -100,24 +102,21 @@ export const UploadPage: React.FC = () => {
         addLog(isConfirmed ? 'Фидбек отправлен' : 'Инцидент отклонён');
     };
 
+    // Получаем bbox для текущего времени из result.yolo
     const currentBBoxes = (): Array<[number, number, number, number]> | null => {
         if (!result?.yolo) return null;
         const secondKey = Math.floor(currentTime).toString();
         const boxes = result.yolo[secondKey];
         if (!boxes || boxes.length === 0) return null;
-
-        const bboxes: Array<[number, number, number, number]> = [];
-        for (const detection of boxes) {
-            // detection – это массив, где первый элемент – массив bbox [x1,y1,x2,y2]
-            if (Array.isArray(detection) && detection.length > 0) {
-                const bbox = detection[0];
-                if (Array.isArray(bbox) && bbox.length === 4) {
-                    bboxes.push([bbox[0], bbox[1], bbox[2], bbox[3]]);
-                }
-            }
-        }
-        return bboxes.length > 0 ? bboxes : null;
+        // boxes – это массив массивов, каждый элемент [x1,y1,x2,y2]
+        return boxes as Array<[number, number, number, number]>;
     };
+
+    // События для таймлайна из result.mae
+    const timelineEvents = result?.mae?.map(ev => ({
+        time: ev.time,
+        class: ev.answer,
+    })) || [];
 
     useEffect(() => {
         loadHistory();
@@ -132,10 +131,14 @@ export const UploadPage: React.FC = () => {
             </div>
 
             <div className="video-container">
-                <VideoPlayer url={videoUrl} onProgress={setCurrentTime} onDuration={setDuration} />
-                <BBoxCanvas videoElement={videoRef.current} detections={currentBBoxes()} />
-                {result?.mae && duration > 0 && (
-                    <Timeline events={result.mae} duration={duration} currentTime={currentTime} onSeek={t => {
+                {videoUrl ? (
+                    <VideoPlayer url={videoUrl} onProgress={setCurrentTime} onDuration={setDuration} />
+                ) : (
+                    <div className="video-placeholder">Видео не загружено</div>
+                )}
+                {videoUrl && <BBoxCanvas videoElement={videoRef.current} detections={currentBBoxes()} label="АГРЕССИЯ" />}
+                {timelineEvents.length > 0 && duration > 0 && (
+                    <Timeline events={timelineEvents} duration={duration} currentTime={currentTime} onSeek={t => {
                         if (videoRef.current) videoRef.current.currentTime = t;
                     }} />
                 )}

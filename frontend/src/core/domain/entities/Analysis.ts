@@ -1,17 +1,17 @@
-export type ProcessingState = 'PENDING' | 'FINISHED' | 'ERROR';
+export type ProcessingState = 'PENDING' | 'PROCESSING' | 'FINISHED' | 'ERROR';
 
 export interface MaeEvent {
     time: [number, number];
-    class: string;
-    confident?: number;
+    answer: string;
+    confident: number;
 }
 
 export interface Analysis {
     id: string;
     state: ProcessingState;
-    predicted_class?: string;
-    confidence_percent?: number;
-    video_url?: string;
-    mae: MaeEvent[] | null;
-    yolo: Record<string, number[][][]> | null;
+    x3d: Record<string, number> | null;        // парсится из строки
+    mae: MaeEvent[] | null;                    // парсится из строки
+    yolo: Record<string, number[][]> | null;   // парсится из строки
+    objects: string[] | null;
+    all_classes: string[] | null;
 }
