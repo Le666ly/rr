@@ -18,7 +18,6 @@ export class ApiVideoRepository {
     }
 
     async getHistory(limit: number = 20): Promise<Analysis[]> {
-        // Бэкенд возвращает список последних задач (по умолчанию 100)
         const rawList = await this.http.get<any[]>('/Klin/');
         return rawList.slice(0, limit).map(item => this.parseAnalysis(item));
     }
@@ -27,6 +26,7 @@ export class ApiVideoRepository {
         return {
             id: raw.id,
             state: raw.state,
+            // Поля x3d, mae, yolo могут быть строками JSON или null
             x3d: raw.x3d ? JSON.parse(raw.x3d) : null,
             mae: raw.mae ? JSON.parse(raw.mae) : null,
             yolo: raw.yolo ? JSON.parse(raw.yolo) : null,

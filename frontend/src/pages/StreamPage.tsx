@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStream } from '../hooks/useStream';
-import { BBoxCanvas } from '../components/BBoxCanvas/BBoxCanvas';
 
 export const StreamPage: React.FC = () => {
     const [cameraUrl, setCameraUrl] = useState('');
@@ -17,8 +16,6 @@ export const StreamPage: React.FC = () => {
         stop();
     };
 
-    // Для отображения bbox у стрима нет видеоэлемента, так как видео воспроизводится на бэкенде.
-    // Можно показать последний обнаруженный класс и уверенность.
     return (
         <div className="stream-page">
             <div className="stream-controls">
@@ -45,13 +42,12 @@ export const StreamPage: React.FC = () => {
             {streamState && (
                 <div className="stream-info">
                     <div>Статус: {streamState.state}</div>
+                    <div>ID стрима: {streamState.id}</div>
                     <div>Последнее X3D: {streamState.last_x3d_label} ({streamState.last_x3d_confidence?.toFixed(2)})</div>
                     <div>Последнее MAE: {streamState.last_mae_label} ({streamState.last_mae_confidence?.toFixed(2)})</div>
                     <div>Обнаруженные объекты: {streamState.objects?.join(', ') || '-'}</div>
                 </div>
             )}
-
-            {/* Видеоплеер для стрима не нужен, так как бэкенд сам обрабатывает поток */}
         </div>
     );
 };

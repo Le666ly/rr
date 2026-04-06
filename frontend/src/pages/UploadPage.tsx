@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { VideoPlayer } from '../components/VideoPlayer/VideoPlayer';
+import { VideoPlayer, VideoPlayerRef } from '../components/VideoPlayer/VideoPlayer';
 import { BBoxCanvas } from '../components/BBoxCanvas/BBoxCanvas';
 import { Timeline } from '../components/Timeline/Timeline';
 import { LogPanel } from '../components/LogPanel/LogPanel';
@@ -27,7 +27,7 @@ export const UploadPage: React.FC = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [history, setHistory] = useState<HistoryItem[]>([]);
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const playerRef = useRef<VideoPlayerRef>(null);
 
     const addLog = (msg: string) => {
         const time = new Date().toLocaleTimeString();
@@ -44,7 +44,6 @@ export const UploadPage: React.FC = () => {
                 feedbackStatus: null,
             }));
             setHistory(items);
-            // также сохраняем в localStorage для согласованности
             historyRepo.saveHistory(items);
         } catch (err) {
             console.error('Failed to load history', err);
@@ -56,10 +55,9 @@ export const UploadPage: React.FC = () => {
             addLog(`Загрузка анализа ${id}...`);
             const analysis = await getAnalysisStatus(videoRepo, id);
             setResult(analysis);
-            // В бэкенде нет video_url, но можно сгенерировать ссылку на оригинальное видео, если оно хранится в S3
-            // Пока оставим пустым, видео не будет проигрываться.
+            // Видео не загружено, показываем заглушку
             setVideoUrl(null);
-            addLog('Данные восстановлены');
+            addLog('Данные восстановлены (видео недоступно)');
         } catch (err: any) {
             addLog(`Ошибка: ${err.message}`);
         }
@@ -74,11 +72,16 @@ export const UploadPage: React.FC = () => {
         try {
             let sourceFile = file;
             if (!sourceFile && url) {
+                addLog('Загрузка видео по URL...');
                 const response = await fetch(url);
                 const blob = await response.blob();
                 sourceFile = new File([blob], 'video.mp4', { type: blob.type });
             }
             if (!sourceFile) throw new Error('Не удалось получить видео');
+
+            // Создаём локальный URL для предпросмотра
+            const localUrl = URL.createObjectURL(sourceFile);
+            setVideoUrl(localUrl);
 
             const analysis = await uploadVideo(videoRepo, sourceFile, (status) => {
                 addLog(`Статус: ${status.state}`);
@@ -86,7 +89,7 @@ export const UploadPage: React.FC = () => {
                 if (status.state === 'ERROR') addLog('Ошибка обработки');
             });
 
-            await loadHistory(); // обновим историю
+            await loadHistory();
             setResult(analysis);
             addLog('Анализ завершён');
         } catch (err: any) {
@@ -102,13 +105,21 @@ export const UploadPage: React.FC = () => {
         addLog(isConfirmed ? 'Фидбек отправлен' : 'Инцидент отклонён');
     };
 
-    // Получаем bbox для текущего времени из result.yolo
+    // Получение bbox для текущего времени из result.yolo
     const currentBBoxes = (): Array<[number, number, number, number]> | null => {
         if (!result?.yolo) return null;
-        const secondKey = Math.floor(currentTime).toString();
-        const boxes = result.yolo[secondKey];
-        if (!boxes || boxes.length === 0) return null;
-        // boxes – это массив массивов, каждый элемент [x1,y1,x2,y2]
+        // yolo – это объект, где ключи – временные метки (числа) или строки
+        const times = Object.keys(result.yolo).map(Number).sort((a, b) => a - b);
+        if (times.length === 0) return null;
+        // Находим ближайший ключ, не превышающий currentTime
+        let bestKey = times[0];
+        for (const t of times) {
+            if (t <= currentTime) bestKey = t;
+            else break;
+        }
+        const boxes = result.yolo[bestKey];
+        if (!boxes || !Array.isArray(boxes)) return null;
+        // Каждый элемент должен быть [x1, y1, x2, y2]
         return boxes as Array<[number, number, number, number]>;
     };
 
@@ -120,27 +131,38 @@ export const UploadPage: React.FC = () => {
 
     useEffect(() => {
         loadHistory();
+        // Очистка blob URL при размонтировании
+        return () => {
+            if (videoUrl && videoUrl.startsWith('blob:')) URL.revokeObjectURL(videoUrl);
+        };
     }, []);
+
+    // При изменении результата или видео не нужно ничего дополнительного
 
     return (
         <div className="upload-page">
             <div className="upload-controls">
                 <input type="file" accept="video/*" onChange={e => setFile(e.target.files?.[0] || null)} />
-                <input type="text" placeholder="Ссылка на видео" value={url} onChange={e => setUrl(e.target.value)} />
+                <input type="text" placeholder="Ссылка на видео (будет скачано)" value={url} onChange={e => setUrl(e.target.value)} />
                 <button onClick={handleUpload} disabled={loading}>{loading ? 'Обработка...' : 'Запустить анализ'}</button>
             </div>
 
             <div className="video-container">
                 {videoUrl ? (
-                    <VideoPlayer url={videoUrl} onProgress={setCurrentTime} onDuration={setDuration} />
+                    <>
+                        <VideoPlayer ref={playerRef} url={videoUrl} onProgress={setCurrentTime} onDuration={setDuration} />
+                        <BBoxCanvas videoElement={playerRef.current?.getVideoElement() || null} detections={currentBBoxes()} label="АГРЕССИЯ" />
+                    </>
                 ) : (
                     <div className="video-placeholder">Видео не загружено</div>
                 )}
-                {videoUrl && <BBoxCanvas videoElement={videoRef.current} detections={currentBBoxes()} label="АГРЕССИЯ" />}
                 {timelineEvents.length > 0 && duration > 0 && (
-                    <Timeline events={timelineEvents} duration={duration} currentTime={currentTime} onSeek={t => {
-                        if (videoRef.current) videoRef.current.currentTime = t;
-                    }} />
+                    <Timeline
+                        events={timelineEvents}
+                        duration={duration}
+                        currentTime={currentTime}
+                        onSeek={(t) => playerRef.current?.seekTo(t)}
+                    />
                 )}
             </div>
 

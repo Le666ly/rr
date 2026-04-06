@@ -1,31 +1,54 @@
-import React, { useRef } from 'react';
-// @ts-ignore – react-player работает без типов
-import ReactPlayer from 'react-player';
+import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
     url: string | null;
-    onProgress?: (playedSeconds: number) => void;
+    onProgress?: (currentTime: number) => void;
     onDuration?: (duration: number) => void;
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, onProgress, onDuration }) => {
-    const playerRef = useRef<any>(null);
+export interface VideoPlayerRef {
+    getVideoElement: () => HTMLVideoElement | null;
+    seekTo: (time: number) => void;
+}
 
-    if (!url) return <div className="video-placeholder">Нет видео</div>;
+export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
+    ({ url, onProgress, onDuration }, ref) => {
+        const videoRef = useRef<HTMLVideoElement>(null);
 
-    return (
-        <div className="video-player-wrapper">
-            <ReactPlayer
-                ref={playerRef}
-                url={url}
-                width="100%"
-                height="100%"
-                controls
-                onProgress={(progress: { playedSeconds: number }) => onProgress?.(progress.playedSeconds)}
-                onDuration={onDuration}
-                style={{ position: 'absolute', top: 0, left: 0 }}
-            />
-        </div>
-    );
-};
+        useImperativeHandle(ref, () => ({
+            getVideoElement: () => videoRef.current,
+            seekTo: (time: number) => {
+                if (videoRef.current) videoRef.current.currentTime = time;
+            },
+        }));
+
+        const handleTimeUpdate = () => {
+            if (videoRef.current && onProgress) {
+                onProgress(videoRef.current.currentTime);
+            }
+        };
+
+        const handleLoadedMetadata = () => {
+            if (videoRef.current && onDuration) {
+                onDuration(videoRef.current.duration);
+            }
+        };
+
+        if (!url) return <div className="video-placeholder">Нет видео</div>;
+
+        return (
+            <div className="video-player-wrapper">
+                <video
+                    ref={videoRef}
+                    src={url}
+                    controls
+                    className="video-element"
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    style={{ width: '100%', height: '100%' }}
+                />
+            </div>
+        );
+    }
+);
